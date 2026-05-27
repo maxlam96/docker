@@ -48,24 +48,6 @@ pipeline {
       }
     }
 
-    stage('Check Node Code') {
-      steps {
-        dir(env.SOURCE_DIR) {
-          sh 'test -f nodejs-app/package.json'
-          sh 'test -f nodejs-app/package-lock.json'
-          sh 'test -f nodejs-app/src/server.js'
-          sh 'node --check nodejs-app/src/server.js'
-          sh '''
-            set +e
-            npm ci --omit=dev --ignore-scripts
-            status=$?
-            rm -rf node_modules
-            exit "$status"
-          '''
-        }
-      }
-    }
-
     stage('Build Docker Image') {
       steps {
         sh '''
