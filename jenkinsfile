@@ -1,0 +1,36 @@
+@Library('jenkins-shared-library') _
+
+pipeline {
+  agent any
+
+  stages {
+    stage('Test Git Checkout') {
+      steps {
+        script {
+          def gitInfo = gitCheckout(
+            url: 'git@github.com:company/my-service.git',
+            branch: 'main',
+            credentialsId: 'github-ssh-key',
+            shallow: true,
+            depth: 1,
+            allowedBranches: ['main', 'develop'],
+          )
+
+          env.GIT_COMMIT_SHORT = gitInfo.commit
+          env.GIT_FULL_COMMIT = gitInfo.fullCommit
+          env.GIT_AUTHOR_NAME = gitInfo.authorName
+          env.GIT_AUTHOR_EMAIL = gitInfo.authorEmail
+        }
+      }
+    }
+
+    stage('Show Git Info') {
+      steps {
+        echo "Commit short: ${env.GIT_COMMIT_SHORT}"
+        echo "Commit full: ${env.GIT_FULL_COMMIT}"
+        echo "Author name: ${env.GIT_AUTHOR_NAME}"
+        echo "Author email: ${env.GIT_AUTHOR_EMAIL}"
+      }
+    }
+  }
+}
