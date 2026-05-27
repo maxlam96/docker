@@ -8,9 +8,9 @@ pipeline {
       steps {
         script {
           def gitInfo = gitCheckout(
-            url: 'git@github.com:company/my-service.git',
+            url: 'https://github.com/maxlam96/docker.git',
             branch: 'main',
-            credentialsId: 'github-ssh-key',
+            credentialsId: 'jenkins',
             shallow: true,
             depth: 1,
             allowedBranches: ['main', 'develop'],
