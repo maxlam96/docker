@@ -1,0 +1,14 @@
+{
+  "name": "nodejs-docker-test",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal secure Node.js app for Docker build testing",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
+

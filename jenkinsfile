@@ -2,34 +2,103 @@
 
 pipeline {
   agent any
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+  }
+
+  environment {
+    APP_REPO_URL = 'https://github.com/maxlam96/docker.git'
+    APP_REPO_BRANCH = 'main'
+    APP_REPO_CREDENTIALS_ID = 'maxlam96'
+
+    SOURCE_DIR = 'nodejs-app'
+    DOCKERFILE_PATH = 'Dockerfile'
+    IMAGE_NAME = 'nodejs-docker-test'
+  }
+
   stages {
-    stage('Test Git Checkout') {
+    stage('Checkout Node.js Code') {
       steps {
         script {
           def gitInfo = gitCheckout(
-            url: 'https://github.com/maxlam96/docker.git',
-            branch: 'main',
-            credentialsId: 'maxlam96',
+            url: env.APP_REPO_URL,
+            branch: env.APP_REPO_BRANCH,
+            credentialsId: env.APP_REPO_CREDENTIALS_ID,
+            targetDir: env.SOURCE_DIR,
             shallow: true,
             depth: 1,
             allowedBranches: ['main', 'develop'],
+
+            // Enable after basic checkout works:
+            // authorEmailDomain: 'company.com',
+            // blockedAuthorEmails: ['bot@example.com']
           )
 
+          if (!(gitInfo instanceof Map)) {
+            error("gitCheckout returned ${gitInfo.getClass().getName()} instead of Map. Push the latest jenkins-shared-library code to main, then rerun this job.")
+          }
+
           env.GIT_COMMIT_SHORT = gitInfo.commit
-          env.GIT_FULL_COMMIT = gitInfo.fullCommit
-          env.GIT_AUTHOR_NAME = gitInfo.authorName
           env.GIT_AUTHOR_EMAIL = gitInfo.authorEmail
+          env.IMAGE_TAG = gitInfo.commit
+          env.FULL_IMAGE_NAME = "${env.IMAGE_NAME}:${env.IMAGE_TAG}"
         }
       }
     }
 
-    stage('Show Git Info') {
+    stage('Check Node.js Code') {
       steps {
-        echo "Commit short: ${env.GIT_COMMIT_SHORT}"
-        echo "Commit full: ${env.GIT_FULL_COMMIT}"
-        echo "Author name: ${env.GIT_AUTHOR_NAME}"
-        echo "Author email: ${env.GIT_AUTHOR_EMAIL}"
+        dir(env.SOURCE_DIR) {
+          sh 'test -f package.json'
+          sh 'test -f package-lock.json'
+          sh 'test -f src/server.js'
+          sh 'node --check src/server.js'
+          sh '''
+            set +e
+            npm ci --omit=dev --ignore-scripts
+            status=$?
+            rm -rf node_modules
+            exit "$status"
+          '''
+        }
       }
+    }
+
+    stage('Build Docker Image') {
+      steps {
+        sh '''
+          set -eu
+          docker buildx build \
+            --load \
+            --platform linux/amd64 \
+            -f "$DOCKERFILE_PATH" \
+            -t "$FULL_IMAGE_NAME" \
+            "$SOURCE_DIR"
+        '''
+      }
+    }
+
+    stage('Smoke Test Image') {
+      steps {
+        sh '''
+          set -eu
+          container_id="$(docker run -d "$FULL_IMAGE_NAME")"
+          trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
+
+          sleep 3
+          docker exec "$container_id" node -e "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+        '''
+      }
+    }
+  }
+
+  post {
+    always {
+      echo "Image: ${env.FULL_IMAGE_NAME}"
+      echo "Commit: ${env.GIT_COMMIT_SHORT}"
+      echo "Author email: ${env.GIT_AUTHOR_EMAIL}"
     }
   }
 }
