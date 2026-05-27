@@ -48,13 +48,13 @@ pipeline {
       }
     }
 
-    stage('Check Node.js Code') {
+    stage('Check Node Code') {
       steps {
         dir(env.SOURCE_DIR) {
-          sh 'test -f package.json'
-          sh 'test -f package-lock.json'
-          sh 'test -f src/server.js'
-          sh 'node --check src/server.js'
+          sh 'test -f nodejs-app/package.json'
+          sh 'test -f nodejs-app/package-lock.json'
+          sh 'test -f nodejs-app/src/server.js'
+          sh 'node --check nodejs-app/src/server.js'
           sh '''
             set +e
             npm ci --omit=dev --ignore-scripts
