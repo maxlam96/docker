@@ -10,7 +10,7 @@ pipeline {
           def gitInfo = gitCheckout(
             url: 'https://github.com/maxlam96/docker.git',
             branch: 'main',
-            credentialsId: 'jenkins',
+            credentialsId: 'maxlam96',
             shallow: true,
             depth: 1,
             allowedBranches: ['main', 'develop'],
